@@ -1,0 +1,358 @@
+// Rumman Shahzad and Shah Qureshi
+// CS 385-01, Progress Report 3
+// April 11, 2024
+
+// 1-bit half-adder in gate-level modeling.
+module half_adder(A,B,S,C);
+    input A,B;
+    output S,C;
+    
+    xor (S,A,B);
+    and (C,A,B);
+endmodule
+
+// 1-bit full adder (with cascaded half-adders) in gate-level modeling.
+module full_adder(A,B,Cin,S,Cout);
+    input A,B,Cin;
+    output S,Cout;
+    wire s1,c1,c2;
+
+    half_adder HA1(A,B,s1,c1),
+               HA2(s1,Cin,S,c2);
+    or G1(Cout,c1,c2);
+endmodule
+
+// 1-bit 2x1 multiplexer in gate-level modeling.
+module two_mux(a,b,ctl,out);
+    input a,b,ctl;
+    output out;
+    wire w1,w2,w3;
+
+    not g1(w1,ctl);
+    and g2(w2,a,w1),
+  g3(w3,b,ctl);
+    or g4(out,w2,w3);
+endmodule
+
+// 1-bit 4x1 multiplexer in gate-level modeling, implemented with cascaded 2x1 multiplexers.
+module four_mux(a,b,c,d,ctl,out);
+    input a,b,c,d;
+    input [1:0] ctl;
+    output out;
+    wire w1,w2;
+
+    two_mux mux1(a,b,ctl[0],w1),
+      mux2(c,d,ctl[0],w2),
+            mux3(w1,w2,ctl[1],out);
+endmodule
+
+// 2-bit 2x1 multiplexer in gate-level modeling.
+module twobit_two_mux(a,b,ctl,out);
+    input ctl;
+    input [1:0] a,b;
+    output [1:0] out;
+    wire wN,w0,w1,w2,w3;
+    
+    not n0(wN,ctl);
+    and g0(a0,a[0],wN),
+        g1(a1,a[1],wN);
+    and g2(b0,b[0],ctl),
+        g3(b1,b[1],ctl);
+    
+    or g4(out[0],a0,b0),
+       g5(out[1],a1,b1);
+endmodule
+
+// 16-bit 2x1 multiplexer in gate-level modeling, implemented with cascaded 2-bit 2x1 multiplexers.
+module sixteenbit_two_mux(a,b,ctl,out);
+    input ctl;
+    input [15:0] a,b;
+    output [15:0] out;
+
+    twobit_two_mux m0(a[1:0],b[1:0],ctl,out[1:0]),
+               m1(a[3:2],b[3:2],ctl,out[3:2]),
+               m2(a[5:4],b[5:4],ctl,out[5:4]),
+                   m3(a[7:6],b[7:6],ctl,out[7:6]),
+                   m4(a[9:8],b[9:8],ctl,out[9:8]),
+                   m5(a[11:10],b[11:10],ctl,out[11:10]),
+                   m6(a[13:12],b[13:12],ctl,out[13:12]),
+                   m7(a[15:14],b[15:14],ctl,out[15:14]);    
+endmodule
+
+// 1-bit ALU in gate-level modeling, which will be cascaded 15 times.
+module onebit_ALU(a,b,less,Ainvert,Bnegate,cin,op,result,cout);
+    input a,b,less,Ainvert,Bnegate,cin;
+    input [1:0] op;
+    output result,cout;
+    wire wNA,wNB,w0,w1,w2,w3,w4;
+
+    not n0(wNA,a),
+        n1(wNB,b);
+
+    two_mux m0(a,wNA,Ainvert,w0),
+            m1(b,wNB,Bnegate,w1);
+
+    and g0(w2,w0,w1);
+    or g1(w3,w0,w1);
+    full_adder FA(w0,w1,cin,w4,cout);
+
+    four_mux m2(w2,w3,w4,less,op,result);
+endmodule
+
+// The final 1-bit ALU in gate-level modeling, which will be used once at the end in the main ALU unit.
+module onebit_ALU_final(a,b,less,Ainvert,Bnegate,cin,op,result,set);
+    input a,b,less,Ainvert,Bnegate,cin;
+    input [1:0] op;
+    output result,set;
+    wire wNA,wNB,w0,w1,w2,w3,cout;
+
+    not n0(wNA,a),
+     n1(wNB,b);
+
+    two_mux m0(a,wNA,Ainvert,w0),
+      m1(b,wNB,Bnegate,w1);
+
+    and g0(w2,w0,w1);
+    or g1(w3,w0,w1);
+    full_adder FA(w0,w1,cin,set,cout);
+
+    four_mux m2(w2,w3,set,less,op,result);
+endmodule
+
+// Complete 16-bit ALU in gate-level modeling.
+module ALU(ALUctl,A,B,Result);
+    input [3:0] ALUctl;
+    input [15:0] A,B;
+    output [15:0] Result;
+    output Zero;
+    wire cout0,cout1,cout2,cout3,cout4,cout5,cout6,cout7,cout8,cout9,cout10,cout11,cout12,cout13,cout14,set;
+
+    onebit_ALU alu0(A[0],B[0],set,ALUctl[3],ALUctl[2],ALUctl[2],ALUctl[1:0],Result[0],cout0),
+         alu1(A[1],B[1],1'b0,ALUctl[3],ALUctl[2],cout0,ALUctl[1:0],Result[1],cout1),
+         alu2(A[2],B[2],1'b0,ALUctl[3],ALUctl[2],cout1,ALUctl[1:0],Result[2],cout2),
+         alu3(A[3],B[3],1'b0,ALUctl[3],ALUctl[2],cout2,ALUctl[1:0],Result[3],cout3),
+         alu4(A[4],B[4],1'b0,ALUctl[3],ALUctl[2],cout3,ALUctl[1:0],Result[4],cout4),
+         alu5(A[5],B[5],1'b0,ALUctl[3],ALUctl[2],cout4,ALUctl[1:0],Result[5],cout5),
+         alu6(A[6],B[6],1'b0,ALUctl[3],ALUctl[2],cout5,ALUctl[1:0],Result[6],cout6),
+         alu7(A[7],B[7],1'b0,ALUctl[3],ALUctl[2],cout6,ALUctl[1:0],Result[7],cout7),
+         alu8(A[8],B[8],1'b0,ALUctl[3],ALUctl[2],cout7,ALUctl[1:0],Result[8],cout8),
+         alu9(A[9],B[9],1'b0,ALUctl[3],ALUctl[2],cout8,ALUctl[1:0],Result[9],cout9),
+         alu10(A[10],B[10],1'b0,ALUctl[3],ALUctl[2],cout9,ALUctl[1:0],Result[10],cout10),
+         alu11(A[11],B[11],1'b0,ALUctl[3],ALUctl[2],cout10,ALUctl[1:0],Result[11],cout11),
+         alu12(A[12],B[12],1'b0,ALUctl[3],ALUctl[2],cout11,ALUctl[1:0],Result[12],cout12),
+         alu13(A[13],B[13],1'b0,ALUctl[3],ALUctl[2],cout12,ALUctl[1:0],Result[13],cout13),
+         alu14(A[14],B[14],1'b0,ALUctl[3],ALUctl[2],cout13,ALUctl[1:0],Result[14],cout14);
+    onebit_ALU_final alu15(A[15],B[15],1'b0,ALUctl[3],ALUctl[2],cout14,ALUctl[1:0],Result[15],set);
+endmodule
+
+// Register file in behavioral modeling.
+module reg_file (RR1,RR2,WR,WD,RegWrite,RD1,RD2,clock);
+  input [1:0] RR1,RR2,WR;
+  input [15:0] WD;
+  input RegWrite,clock;
+  output [15:0] RD1,RD2;
+  reg [15:0] Regs[0:15];
+  assign RD1 = Regs[RR1];
+  assign RD2 = Regs[RR2];
+  initial Regs[0] = 0;
+  always @(negedge clock)
+    if (RegWrite==1 & WR!=0) 
+  Regs[WR] <= WD;
+endmodule
+
+// Main control unit, implemented in behavioral modeling.
+module MainControl (Op,Control); 
+    input [3:0] Op;
+    output reg [6:0] Control;
+
+    // Control bits: RegDst, ALUSrc, RegWrite, ALUctl
+    always @(Op) case (Op)
+        4'b0000: Control <= 7'b101_0010; // add
+        4'b0001: Control <= 7'b101_0110; // sub
+        4'b0010: Control <= 7'b101_0000; // and
+        4'b0011: Control <= 7'b101_0001; // or
+        4'b0100: Control <= 7'b101_1100; // nor
+        4'b0101: Control <= 7'b101_1101; // nand
+        4'b0110: Control <= 7'b101_0111; // slt
+        4'b0111: Control <= 7'b011_0010; // addi
+    endcase
+endmodule
+
+module CPU (clock,PC,IFID_IR,IDEX_IR,WD);
+  input clock;
+  output [15:0] PC,IFID_IR,IDEX_IR,WD;
+  
+  initial begin
+/*
+// Program with nop's - no hazards    
+    IMemory[0] = 16'b0111_00_01_00001111;  // addi $t1,$0,15   ($t1=15)
+    IMemory[1] = 16'b0111_00_10_00000111;  // addi $t2,$0,7    ($t2=7)
+    IMemory[2]  = 16'b0000000000000000;    // nop
+    IMemory[3] = 16'b0010_01_10_11_000000; // and $t3,$t1,$t2  ($t3=7)
+    IMemory[4]  = 16'b0000000000000000;    // nop
+    IMemory[5] = 16'b0001_01_11_10_000000; // sub $t2,$t1,$t3  ($t2=8)
+    IMemory[6]  = 16'b0000000000000000;    // nop
+    IMemory[7] = 16'b0011_10_11_10_000000; // or $t2,$t2,$t3   ($t2=15)
+    IMemory[8]  = 16'b0000000000000000;    // nop
+    IMemory[9] = 16'b0000_10_11_11_000000; // add $t3,$t2,$t3  ($t3=22)
+    IMemory[10]  = 16'b0000000000000000;    // nop
+    IMemory[11] = 16'b0100_10_11_01_000000; // nor $t1,$t2,$t3  ($t1=-32)
+    IMemory[12] = 16'b0110_11_10_01_000000; // slt $t1,$t3,$t2  ($t1=0)
+    IMemory[13] = 16'b0110_10_11_01_000000; // slt $t1,$t2,$t3  ($t1=1)
+  
+  end
+*/
+// Program without nop's - wrong results due to data hazards
+
+    IMemory[0] = 16'b0111_00_01_00001111;  // addi $t1,$0,15   ($t1=15)
+    IMemory[1] = 16'b0111_00_10_00000111;  // addi $t2,$0,7    ($t2=7)
+    IMemory[2] = 16'b0010_01_10_11_000000; // and $t3,$t1,$t2  ($t3=7)
+    IMemory[3] = 16'b0001_01_11_10_000000; // sub $t2,$t1,$t3  ($t2=8)
+    IMemory[4] = 16'b0011_10_11_10_000000; // or $t2,$t2,$t3   ($t2=15)
+    IMemory[5] = 16'b0000_10_11_11_000000; // add $t3,$t2,$t3  ($t3=22)
+    IMemory[6] = 16'b0100_10_11_01_000000; // nor $t1,$t2,$t3  ($t1=-32)
+    IMemory[7] = 16'b0110_11_10_01_000000; // slt $t1,$t3,$t2  ($t1=0)
+    IMemory[8] = 16'b0110_10_11_01_000000; // slt $t1,$t2,$t3  ($t1=1)
+
+  end
+
+// Pipeline stages
+
+//=== IF STAGE ===
+   wire [15:0] NextPC;
+   reg[15:0] PC, IMemory[0:1023];
+//--------------------------------
+   reg[15:0] IFID_IR;
+//--------------------------------
+   ALU fetch (4'b0010,PC,16'd2,NextPC);
+
+//=== ID STAGE ===
+   wire [6:0] Control;
+   wire [15:0] RD1,RD2,SignExtend,WD;
+   wire [15:0] FWD_RD1,FWD_RD2; // Outputs of the forwarding muxes
+   reg [15:0] IDEX_IR; // For monitoring the pipeline
+   reg IDEX_RegWrite,IDEX_ALUSrc,IDEX_RegDst;
+   reg [3:0]  IDEX_ALUctl;
+   reg [15:0] IDEX_RD1,IDEX_RD2,IDEX_SignExt;
+   reg [1:0]  IDEX_rt,IDEX_rd;
+   wire [1:0] WR;
+   wire Q,W,E,R;
+   reg_file rf (IFID_IR[11:10],IFID_IR[9:8],WR,WD,IDEX_RegWrite,RD1,RD2,clock);
+   MainControl MainCtr (IFID_IR[15:12],Control); 
+   assign SignExtend = {{8{IFID_IR[15]}},IFID_IR[7:0]}; 
+
+//=== EXE STAGE ===
+   wire [15:0] B,ALUOut;
+   ALU ex (IDEX_ALUctl, IDEX_RD1, B, ALUOut);
+   
+   sixteenbit_two_mux mux4(IDEX_RD2,IDEX_SignExt,IDEX_ALUSrc,B);
+   twobit_two_mux mux5(IDEX_rt,IDEX_rd,IDEX_RegDst,WR);
+   
+   assign WD = ALUOut;
+
+// Forwarding multiplexers
+   xor x0(Q,WR[1],IFID_IR[11]);
+   xor x1(W,WR[0],IFID_IR[10]); 
+   xor x2(E,Q,W);
+   not n0(R,E); 
+   and a0(T,IDEX_RegWrite,R);
+   sixteenbit_two_mux mux6(RD1,ALUOut,T,FWD_RD1);
+   
+   //assign FWD_RD2 = (IDEX_RegWrite && WR==IFID_IR[20:16]) ? ALUOut: RD2;
+   xor x3(A,WR[1],IFID_IR[9]); 
+   xor x4(S,WR[0],IFID_IR[8]); 
+   xor x5(D,A,S); 
+   not n1(F,D); 
+   and a1(G,IDEX_RegWrite,F); 
+   sixteenbit_two_mux mux7(RD2,ALUOut,G,FWD_RD2);
+
+   initial begin
+    PC = 0;
+    IFID_IR = 0; // clear pipeline register to avoid forwarding from empty pipeline
+    IDEX_RegWrite = 0; 
+   end
+
+// Running the pipeline
+   always @(negedge clock) begin
+
+// Stage 1 - IF
+    PC <= NextPC;
+    IFID_IR <= IMemory[PC>>1];
+
+// Stage 2 - ID
+    IDEX_IR <= IFID_IR; // For monitoring the pipeline
+    {IDEX_RegDst,IDEX_ALUSrc,IDEX_RegWrite,IDEX_ALUctl} <= Control;    
+
+// No Forwarding
+//  IDEX_RD1 <= RD1; 
+//  IDEX_RD2 <= RD2;
+
+// Forwarding
+    IDEX_RD1 <= FWD_RD1; 
+    IDEX_RD2 <= FWD_RD2;
+
+    IDEX_SignExt <= SignExtend;
+    IDEX_rt <= IFID_IR[9:8];
+    IDEX_rd <= IFID_IR[7:6];
+
+
+// Stage 3 - EX
+// No transfers needed here - on negedge WD is written into register WR
+  end
+endmodule
+
+// Test module
+module test ();
+  reg clock;
+  wire signed [15:0] PC,IFID_IR,IDEX_IR,WD;
+  CPU test_cpu(clock,PC,IFID_IR,IDEX_IR,WD);
+  always #1 clock = ~clock;
+  initial begin
+    $display ("PC  IFID_IR   IDEX_IR   WD");
+    $monitor ("%2d  %h       %h     %2d",PC,IFID_IR,IDEX_IR,WD);
+    clock = 1;
+    #29 $finish;
+  end
+endmodule
+
+/* Output
+Program with nop's
+---------------------------
+ PC  IFID_IR   IDEX_IR   WD
+ 0  00000000  xxxxxxxx   x
+ 4  2009000f  00000000   x
+ 8  200a0007  2009000f  15
+12  00000000  200a0007   7
+16  012a5824  00000000   0
+20  00000000  012a5824   7
+24  012b5022  00000000   0
+28  00000000  012b5022   8
+32  014b5025  00000000   0
+36  00000000  014b5025  15
+40  014b5820  00000000   0
+44  00000000  014b5820  22
+48  014b4827  00000000   0
+52  016a482a  014b4827  -32
+56  014b482a  016a482a   0
+60  xxxxxxxx  014b482a   1
+
+Program without nop's
+--------------------------
+PC  IFID_IR   IDEX_IR   WD
+ 0  00000000  xxxxxxxx   x
+ 4  2009000f  00000000   x
+ 8  200a0007  2009000f  15
+12  012a5824  200a0007   7
+16  012b5022  012a5824   X
+20  014b5025  012b5022   x
+24  014b5820  014b5025   X
+28  014b4827  014b5820   x
+32  016a482a  014b4827   X
+36  014b482a  016a482a   X
+40  xxxxxxxx  014b482a   X
+44  xxxxxxxx  xxxxxxxx   X
+48  xxxxxxxx  xxxxxxxx   X
+52  xxxxxxxx  xxxxxxxx   X
+56  xxxxxxxx  xxxxxxxx   X
+60  xxxxxxxx  xxxxxxxx   X
+*/

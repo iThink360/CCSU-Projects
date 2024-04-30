@@ -1,0 +1,127 @@
+// Rumman Shahzad
+// CS 385-01, Extra Credit (DSD Review)
+// February 1, 2024
+
+// Half Adder
+module half_adder(A,B,S,C);
+    input A,B;
+    output S,C;
+    xor g1(S,A,B);
+    and g2(C,A,B);
+endmodule
+
+// Full Adder
+module full_adder(A,B,CarryIn,S,CarryOut);
+    input A,B,CarryIn;
+    output S,CarryOut;
+    wire Sum1,Cout1,Cout2;
+    
+    // First half adder (Sum1 and Cout1)
+    half_adder HA1 (A,B,Sum1,Cout1);
+    
+    // Second half adder with CarryIn (Sum and Cout2)
+    half_adder HA2(Sum1,CarryIn,S,Cout2);
+    
+    // To obtain final CarryOut
+    or g1(CarryOut,Cout1,Cout2);
+endmodule
+
+// 2x1 Multiplexer
+module multiplexer(x,y,z,out);
+    input x,y,z;
+    output out;
+    wire w1,w2,w3;
+    
+    and G1(w1,y,z);
+    not G2(w2,z);
+    and G3(w3,w2,x);
+    or G4(out,w1,w3);
+endmodule
+
+// D Latch
+module D_latch(D,C,Q);
+    input D,C;
+    output Q;
+    wire x,y,D1,Q1;
+    
+    nand g1(x,D,C);
+    nand g2(y,D1,C);
+    nand g3(Q,x,Q1);
+    nand g4(Q1,y,Q);
+    not g5(D1, D);
+endmodule
+
+// D Flip-Flop
+module D_flip_flop(D,CLK,Q);
+    input D,CLK;
+    output Q;
+    wire CLK1,Y;
+    
+    not n1(CLK1,CLK);
+    D_latch D1(D,CLK,Y);
+    D_latch D2(Y,CLK1,Q);
+endmodule
+
+// 4-bit adder using shift registers and 1-bit serial adder
+module adder(x,y,S,Load,Clock);
+   input [3:0] x,y;
+   input Load,Clock;
+   output [3:0] S;
+   wire [3:0] PO;
+   shiftreg r1(SI,x,SO1,S,Clock,Load),
+            r2(1'b0,y,SO2,PO,Clock,Load);
+   serial_adder sa(SO1,SO2,SI,Clock,Load);
+// Uncomment the following line to trace execution 
+// always @(negedge Clock) $monitor("%b %b",S,PO);
+endmodule
+
+// Shift Register
+module shiftreg(SI,PI,SO,PO,CLK,Load);
+    input Load,CLK;
+    input SI; // Serial input
+    input [3:0] PI; // Parallel input
+    output SO; // Serial output
+    output [3:0] PO; // Parallel output
+    wire A,B;
+    
+   multiplexer m1(SI,PI[3],Load,A);
+   D_flip_flop f1(A,CLK,PO[3]);
+
+   multiplexer m2(PO[3],PI[2],Load,B);
+   D_flip_flop f2(B,CLK,PO[2]);
+
+   multiplexer m3(PO[2],PI[1],Load,C);
+   D_flip_flop f3(C,CLK,PO[1]);
+
+   multiplexer m4(PO[1],PI[0],Load,D);
+   D_flip_flop f4(D,CLK,PO[0]);
+   
+   assign SO=PO[0];
+endmodule
+
+// Serial Adder
+module serial_adder(x,y,S,CLK,Clear);
+    input x,y,CLK,Clear;
+    output S;
+    
+    multiplexer m1(CarryOut,1'b0,Clear,C1);
+    D_flip_flop f1(C1,CLK,Q);
+    full_adder a1(x,y,Q,S,CarryOut);
+endmodule
+
+// Test Module
+module test;
+    reg signed [3:0] A,B;
+    reg Load,CLK;
+    wire signed [3:0] S;
+    adder add(A,B,S,Load,CLK);
+    always #1 CLK = ~CLK; // Generate a clock edge at every time unit
+    initial begin
+        A=5; B=2;
+        Load=1; // Load inputs and clear the flip-flop
+        CLK=1; // Start the clock
+     #2 Load=0; // Start serial adder (enable shifting)
+     #8 $display("%d +%d =%d",A,B,S); // Show sum after 4 negative edges
+	    $finish; // Stop clock pulse
+    end
+endmodule
