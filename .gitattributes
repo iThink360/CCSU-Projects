@@ -1,0 +1,12 @@
+# Ensure all text files have normalized (LF) line endings in the repository
+* text=auto
+
+# Handle line endings explicitly for specific file types
+*.txt text
+*.c text
+*.h text
+*.bat text eol=crlf
+
+# Declare files that should be treated as binaries
+*.png binary
+*.jpg binary
