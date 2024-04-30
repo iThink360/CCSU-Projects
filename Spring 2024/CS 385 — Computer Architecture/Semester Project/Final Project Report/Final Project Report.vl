@@ -2,11 +2,7 @@
 // CS 385-01, Final Project Report
 // April 30th, 2024
 
-// Rumman Shahzad and Shah Qureshi
-// CS 385-01, Final Project Report
-// April 30th, 2024
-
-// Behavioral model of MIPS - pipelined implementation
+// MIPS - pipelined implementation
 
 module reg_file (RR1,RR2,WR,WD,RegWrite,RD1,RD2,clock);
   input [1:0] RR1,RR2,WR;
